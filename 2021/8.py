@@ -1,9 +1,8 @@
-import os
-import functools
 from enum import Enum
+import functools
 
 def read_input():
-    f = open("8-ex.txt", "r")
+    f = open("8.txt", "r")
     line = f.readline().replace("\n", "")
     nos = []
     while len(line) > 0:
@@ -21,58 +20,82 @@ class Position(Enum):
     RDOWN = 6
     DOWN = 7
 
-class Digit:
-    positions = {}
-    found = {}
+available = "abcdefg"
 
-    def __init__(self):
-        for p in Position:
-            self.positions[p] = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+numbers = {
+    0: [Position.UP, Position.LUP, Position.RUP, Position.RDOWN, Position.LDOWN, Position.DOWN],
+    1: [Position.RUP, Position.RDOWN],
+    2: [Position.UP, Position.RUP, Position.MID, Position.LDOWN, Position.DOWN],
+    3: [Position.UP, Position.RUP, Position.MID, Position.RDOWN, Position.DOWN],
+    4: [Position.LUP, Position.MID, Position.RUP, Position.RDOWN],
+    5: [Position.UP, Position.LUP, Position.MID, Position.RDOWN, Position.DOWN],
+    6: [Position.UP, Position.LUP, Position.MID, Position.RDOWN, Position.LDOWN, Position.DOWN],
+    7: [Position.UP, Position.RUP, Position.RDOWN],
+    8: [Position.UP, Position.LUP, Position.RUP, Position.MID, Position.LDOWN, Position.RDOWN, Position.DOWN],
+    9: [Position.UP, Position.LUP, Position.RUP, Position.MID, Position.RDOWN, Position.DOWN]
+}
 
-    def get_positions(self, value):
-        if value == 2:
-            return [Position.RUP, Position.RDOWN]
-        if value == 3:
-            return [Position.UP, Position.RUP, Position.RDOWN]
-        if value == 4:
-            return [Position.LUP, Position.MID, Position.RUP, Position.RDOWN]
-        if value == 5: return list(Position)
-        if value == 6: return list(Position)
-        if value == 7: return list(Position)
+def get_positions(length):
+    if length == 2:
+        return [numbers[1]]
+    if length == 3:
+        return [numbers[7]]
+    if length == 4:
+        return [numbers[4]]
+    if length == 5:
+        return [numbers[2], numbers[3], numbers[5]]
+    if length == 6:
+        return [numbers[0], numbers[6], numbers[9]]
+    return [numbers[8]]
 
-    def apply(self, chain):
-        validPos = self.get_positions(len(chain))
-        for p in Position:
-            if p in validPos:
-                self.positions[p] = [x for x in self.positions[p] if x in chain]
-            else:
-                self.positions[p] = [x for x in self.positions[p] if x not in chain]
-        print("After checking", chain)
-        print("validPos", validPos)
-        print(self.positions)
-        for c in chain:
-            pos = None
-            options = 0
-            for p in validPos:
-                if c in self.positions[p]:
-                    pos = p
-                    options = options + 1
-            if options == 1:
-                self.found[pos] = c
+def apply(conf, remain, positions):
+    if len(remain) == 0:
+        return [conf]
+    if remain[0] in conf:
+        if conf[remain[0]] in positions:
+            newpos = [x for x in positions if x != conf[remain[0]]]
+            return apply(conf, remain[1:], newpos)
+        return None
+    valid = []
+    for pos in positions:
+        newconf = conf.copy()
+        newconf[remain[0]] = pos
+        newpos = [x for x in positions if x != pos]
+        final = apply(newconf, remain[1:], newpos)
+        if final is not None:
+            valid = valid + final
+    return valid
 
-    def print(self):
-        print(self.found)
+def apply_all(words):
+    words.sort(key = lambda x: len(x))
+    confs = [{}]
+    for word in words:
+        oldconfs = confs
+        confs = []
+        for pos in get_positions(len(word)):
+            for conf in oldconfs:
+                valid_confs = apply(conf, word, pos)
+                if valid_confs is not None:
+                    confs.extend(valid_confs)
+    return confs[0]
 
-def found(l):
-    l.sort(key=lambda x: len(x))
-    print(l)
-    d = Digit()
-    for digit in l:
-        d.apply(digit)
-    d.print()
+def get(digit, conf):
+    dashes = [conf[x] for x in digit]
+    for key in numbers:
+        if len(dashes) == len(numbers[key]):
+            pending = [x for x in dashes if x not in numbers[key]]
+            if len(pending) == 0:
+                return str(key)
+    return None
+
+def solve(digits, conf):
+    return int(functools.reduce(lambda x, y: x + get(y, conf), digits, ""))
 
 input = read_input()
+suma = 0
 for l in input:
-    found(l[0])
-    exit(1)
+    conf = apply_all(l[0])
+    suma = suma + solve(l[1], conf)
+
+print("Result:", suma)
 
